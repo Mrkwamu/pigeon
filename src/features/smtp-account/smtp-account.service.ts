@@ -21,13 +21,14 @@ export async function createSMTPAccount(data: CreateSMTPAccountInput) {
     throw new Error("Enter your app password");
   }
 
-  const isExisting = await checkSMTPAccount(data.email);
+  const isExisting = await checkSMTPAccount(email);
 
   if (isExisting) {
     return "Account already added";
   }
 
-  const encryptedPass = encrypt(data.pass);
+  const pass = data.pass.replace(/\s+/g, "");
+  const encryptedPass = encrypt(pass);
 
   const account = await prisma.sMTPAccount.create({
     data: {
@@ -70,4 +71,41 @@ export async function getSMTPAccounts() {
       id: "desc",
     },
   });
+}
+
+export async function updateSMTPAccountPassword(
+  emailInput: string,
+  passInput: string,
+) {
+  const email = emailInput.trim().toLowerCase();
+
+  if (!email) {
+    throw new Error("Please enter your email");
+  }
+
+  if (typeof passInput !== "string" || !passInput.trim()) {
+    throw new Error("Please enter your app password");
+  }
+
+  const account = await prisma.sMTPAccount.findUnique({
+    where: { email },
+    select: { id: true, email: true },
+  });
+
+  if (!account) {
+    throw new Error("SMTP account not found");
+  }
+
+  const pass = passInput.replace(/\s+/g, "");
+  const encryptedPass = encrypt(pass);
+
+  await prisma.sMTPAccount.update({
+    where: { id: account.id },
+    data: { encryptedPass },
+  });
+
+  return {
+    id: account.id,
+    email: account.email,
+  };
 }
