@@ -1,4 +1,4 @@
-import { createCipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 
@@ -31,4 +31,31 @@ export function encrypt(text: string): string {
     authTag.toString("base64"),
     encrypted.toString("base64"),
   ].join(":");
+}
+
+export function decrypt(encryptedText: string): string {
+  const [ivString, authTagString, encryptedString] = encryptedText.split(":");
+
+  if (!ivString || !authTagString || !encryptedString) {
+    throw new Error("Invalid encrypted data format");
+  }
+
+  const iv = Buffer.from(ivString, "base64");
+  const authTag = Buffer.from(authTagString, "base64");
+  const encrypted = Buffer.from(encryptedString, "base64");
+
+  if (iv.length !== 12 || authTag.length !== 16) {
+    throw new Error("Invalid encrypted data");
+  }
+
+  const decipher = createDecipheriv(ALGORITHM, KEY, iv);
+
+  decipher.setAuthTag(authTag);
+
+  const decrypted = Buffer.concat([
+    decipher.update(encrypted),
+    decipher.final(),
+  ]);
+
+  return decrypted.toString("utf8");
 }
