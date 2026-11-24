@@ -1,5 +1,4 @@
 import { MailDeliveryError } from "./mail.errors.js";
-import { createTransporter } from "./mail.transporter.js";
 import type { SendMailOptions, SMTPConfig } from "./mail.types.js";
 import { validateMailOptions, validateSMTPConfig } from "./mail.validator.js";
 import transporterManager from "./transport.manager.js";
@@ -38,8 +37,16 @@ export async function sendMail(
   validateMailOptions(mail);
 
   const transporter = transporterManager.getTransporter(accountId, smtp);
+
   try {
-    return await transporter.sendMail(mail);
+    const result = await transporter.sendMail(mail);
+
+    return {
+      messageId: result.messageId,
+      accepted: result.accepted,
+      rejected: result.rejected,
+      response: result.response,
+    };
   } catch (error: unknown) {
     if (!(error instanceof Error)) {
       throw error;
@@ -48,7 +55,15 @@ export async function sendMail(
     const mailError = error as Error & {
       code?: string;
       responseCode?: number;
+      response?: string;
     };
+
+    console.error("Nodemailer delivery error:", {
+      message: mailError.message,
+      code: mailError.code,
+      responseCode: mailError.responseCode,
+      response: mailError.response,
+    });
 
     throw new MailDeliveryError("Failed to send email.", {
       cause: error,
