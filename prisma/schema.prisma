@@ -11,4 +11,19 @@ model SMTPAccount {
   id            Int    @id @default(autoincrement())
   email         String @unique
   encryptedPass String
+
+  sentEmails SentEmail[]
+}
+
+model SentEmail {
+  id            Int      @id @default(autoincrement())
+  smtpAccountId Int
+  username      String
+  email         String
+  sentAt        DateTime @default(now())
+
+  smtpAccount SMTPAccount @relation(fields: [smtpAccountId], references: [id])
+
+  @@unique([username, smtpAccountId])
+  @@index([email])
 }
